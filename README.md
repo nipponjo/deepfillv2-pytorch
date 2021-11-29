@@ -4,9 +4,9 @@ A PyTorch reimplementation of the paper **Free-Form Image Inpainting with Gated 
 Example images (raw | masked | inpainted):
 
 <div align="center">
-  <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case1.png" width="30%"> <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case1_masked.png" width="30%"> <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case1_out.png" width="30%">
-  <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case2.png" width="30%"> <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case2_masked.png" width="30%"> <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case2_out.png" width="30%">
-  <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case3.png" width="30%"> <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case3_masked.png" width="30%"> <img src="https://github.com/nipponjo/DeepFillv2-priv/blob/master/examples/inpaint/case3_out.png" width="30%">
+  <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case1.png" width="30%"> <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case1_masked.png" width="30%"> <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case1_out.png" width="30%">
+  <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case2.png" width="30%"> <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case2_masked.png" width="30%"> <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case2_out.png" width="30%">
+  <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case3.png" width="30%"> <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case3_masked.png" width="30%"> <img src="https://github.com/nipponjo/deepfillv2-pytorch/blob/master/examples/inpaint/case3_out.png" width="30%">
 </div>
 
 
