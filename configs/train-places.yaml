@@ -1,0 +1,56 @@
+# resume training
+model_restore: '' # start new training
+#model_restore: 'checkpoints/places2/model_exp0/states.pth'
+
+# dataloading
+dataset_path: 'C:/data/places2_train/data_large'
+scan_subdirs: True # Are the images organized in subfolders?
+random_crop: True  # Set to false when dataset is 'celebahq', meaning only resize the images to img_shapes, instead of crop img_shapes from a larger raw image. This is useful when you train on images with different resolutions like places2. In these cases, please set random_crop to true.
+random_horizontal_flip: False
+batch_size: 16
+num_workers: 0
+
+# training
+tb_logging: True # Enable Tensorboard logging?
+log_dir: 'tb_logs/places2/model_exp1' # Tensorboard logging folder
+checkpoint_dir: 'checkpoints/places2/model_exp1' # Checkpoint folder
+
+use_cuda_if_available: True
+random_seed: False # options: False | <int>
+
+g_lr: 0.0001 # lr for Adam optimizer (generator)
+g_beta1: 0.5 # beta1 for Adam optimizer (generator)
+g_beta2: 0.999 # beta2 for Adam optimizer (generator)
+
+d_lr: 0.0001 # lr for Adam optimizer (discriminator)
+d_beta1: 0.5 # beta1 for Adam optimizer (discriminator)
+d_beta2: 0.999 # beta2 for Adam optimizer (discriminator)
+
+max_iters: 1000000 # number of batches to train the models
+
+# logging
+viz_max_out: 10 # number of images from batch 
+# if optional: set to False to deactivate 
+print_iter: 100 # write losses to console and tensorboard
+save_checkpoint_iter: 100 # save checkpoint file and overwrite last one
+save_imgs_to_tb_iter: 500 # (optional) add image grids to tensorboard
+save_imgs_to_dics_iter: 500 # (optional) save image grids in checkpoint folder
+save_cp_backup_iter: 5000 # (optional) save checkpoint file named states_{n_iter}.pth
+
+img_shapes: [256, 256, 3]
+
+# mask options
+height: 128
+width: 128
+max_delta_height: 32
+max_delta_width: 32
+vertical_margin: 0
+horizontal_margin: 0
+
+# loss
+gan_loss: 'hinge' # options: 'hinge', 'ls'
+gan_loss_alpha: 1.
+
+ae_loss: True
+l1_loss_alpha: 1.
+
