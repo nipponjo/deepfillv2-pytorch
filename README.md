@@ -1,4 +1,4 @@
-# DeepFillv2-priv
+# deepfillv2-pytorch
 A PyTorch reimplementation of the paper **Free-Form Image Inpainting with Gated Convolution** (DeepFillv2) (https://arxiv.org/abs/1806.03589) based on the [original TensorFlow implementation](https://github.com/JiahuiYu/generative_inpainting/tree/v2.0.0).
 
 Example images (raw | masked | inpainted):
