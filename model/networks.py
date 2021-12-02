@@ -642,8 +642,8 @@ class DConv(nn.Module):
                  cnum_out, ksize=5, stride=2, padding='auto'):
         super().__init__()
         padding = (ksize-1)//2 if padding == 'auto' else padding
-        self.conv_sn = Conv2DSpectralNorm(cnum_in, cnum_out, ksize, stride, padding)
-        #self.conv_sn = spectral_norm(nn.Conv2d(cnum_in, cnum_out, ksize, stride, padding))
+        #self.conv_sn = Conv2DSpectralNorm(cnum_in, cnum_out, ksize, stride, padding)
+        self.conv_sn = spectral_norm(nn.Conv2d(cnum_in, cnum_out, ksize, stride, padding))
         self.leaky = nn.LeakyReLU(negative_slope=0.2)
 
     def forward(self, x):
