@@ -621,15 +621,17 @@ class Conv2DSpectralNorm(nn.Conv2d):
 
     def forward(self, x):
 
-        size = self.weight.size()
-        weight_orig = self.weight.view(size[0], -1).detach()
+        weight_orig = self.weight.flatten(1).detach()
+        #weight_orig = self.weight.flatten(1)
 
+        #with torch.no_grad():
         for _ in range(self.n_iter):
             v = self.l2_norm(weight_orig.t() @ self.weight_u)
             self.weight_u = self.l2_norm(weight_orig @ v)
 
         sigma = self.weight_u.t() @ weight_orig @ v
         self.weight.data.div_(sigma)
+        #self.weight.div_(sigma)
 
         x = super().forward(x)
 
@@ -642,8 +644,8 @@ class DConv(nn.Module):
                  cnum_out, ksize=5, stride=2, padding='auto'):
         super().__init__()
         padding = (ksize-1)//2 if padding == 'auto' else padding
-        #self.conv_sn = Conv2DSpectralNorm(cnum_in, cnum_out, ksize, stride, padding)
-        self.conv_sn = spectral_norm(nn.Conv2d(cnum_in, cnum_out, ksize, stride, padding))
+        self.conv_sn = Conv2DSpectralNorm(cnum_in, cnum_out, ksize, stride, padding)
+        #self.conv_sn = spectral_norm(nn.Conv2d(cnum_in, cnum_out, ksize, stride, padding))
         self.leaky = nn.LeakyReLU(negative_slope=0.2)
 
     def forward(self, x):

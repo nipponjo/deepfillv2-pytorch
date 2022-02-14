@@ -1,6 +1,8 @@
 # This repo
 *.pth
 tmp
+checkpoints/
+tb_logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

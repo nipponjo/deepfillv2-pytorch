@@ -5,12 +5,11 @@ import torch
 import torchvision as tv
 import torchvision.transforms as T
 
-from model.losses import *
+import model.losses as gan_losses
+import utils.misc as misc
 #from model.networks_tf import Generator, Discriminator
 from model.networks import Generator, Discriminator
-
 from utils.data import ImageDataset
-from utils.misc import *
 
 
 parser = argparse.ArgumentParser()
@@ -61,9 +60,9 @@ def training_loop(generator,        # generator network
         batch_real = batch_real.to(device)
 
         # create mask
-        bbox = random_bbox(config)
-        regular_mask = bbox2mask(config, bbox).to(device)
-        irregular_mask = brush_stroke_mask(config).to(device)
+        bbox = misc.random_bbox(config)
+        regular_mask = misc.bbox2mask(config, bbox).to(device)
+        irregular_mask = misc.brush_stroke_mask(config).to(device)
         mask = torch.logical_or(irregular_mask, regular_mask).to(torch.float32)
 
         # prepare input for generator
@@ -84,8 +83,10 @@ def training_loop(generator,        # generator network
         batch_filled_mask = torch.cat((batch_complete.detach(), torch.tile(
             mask, [config.batch_size, 1, 1, 1])), dim=1)
 
-        d_real = discriminator(batch_real_mask)
-        d_gen = discriminator(batch_filled_mask)
+        batch_real_filled = torch.cat((batch_real_mask, batch_filled_mask))
+
+        d_real_gen = discriminator(batch_real_filled)
+        d_real, d_gen = torch.split(d_real_gen, config.batch_size)
 
         d_loss = gan_loss_d(d_real, d_gen)
         losses['d_loss'] = d_loss
@@ -145,8 +146,8 @@ def training_loop(generator,        # generator network
         if config.tb_logging \
             and config.save_imgs_to_tb_iter \
             and n_iter % config.save_imgs_to_tb_iter == 0:
-            viz_images = [pt_to_image(batch_complete),
-                          pt_to_image(x1), pt_to_image(x2)]
+            viz_images = [misc.pt_to_image(batch_complete),
+                          misc.pt_to_image(x1), misc.pt_to_image(x2)]
             img_grids = [tv.utils.make_grid(images[:config.viz_max_out], nrow=2)
                         for images in viz_images]
 
@@ -160,8 +161,8 @@ def training_loop(generator,        # generator network
         # save example image grids to disk
         if config.save_imgs_to_dics_iter \
             and n_iter % config.save_imgs_to_dics_iter == 0:
-            viz_images = [pt_to_image(batch_real), 
-                          pt_to_image(batch_complete)]
+            viz_images = [misc.pt_to_image(batch_real), 
+                          misc.pt_to_image(batch_complete)]
             img_grids = [tv.utils.make_grid(images[:config.viz_max_out], nrow=2)
                                             for images in viz_images]
             tv.utils.save_image(img_grids, 
@@ -171,7 +172,7 @@ def training_loop(generator,        # generator network
         # save state dict snapshot
         if n_iter % config.save_checkpoint_iter == 0 \
             and n_iter > init_n_iter:
-            save_states("states.pth",
+            misc.save_states("states.pth",
                         generator, discriminator,
                         g_optimizer, d_optimizer,
                         n_iter, config)
@@ -179,7 +180,7 @@ def training_loop(generator,        # generator network
         if config.save_cp_backup_iter \
             and n_iter % config.save_cp_backup_iter == 0 \
             and n_iter > init_n_iter:
-            save_states(f"states_{n_iter}.pth",
+            misc.save_states(f"states_{n_iter}.pth",
                         generator, discriminator,
                         g_optimizer, d_optimizer,
                         n_iter, config)
@@ -187,7 +188,7 @@ def training_loop(generator,        # generator network
 
 def main():
     args = parser.parse_args()
-    config = get_config(args.config)
+    config = misc.get_config(args.config)
 
     # set random seed
     if config.random_seed != False:
@@ -237,9 +238,9 @@ def main():
 
     # losses
     if config.gan_loss == 'hinge':
-        gan_loss_d, gan_loss_g = hinge_loss_d, hinge_loss_g
+        gan_loss_d, gan_loss_g = gan_losses.hinge_loss_d, gan_losses.hinge_loss_g
     elif config.gan_loss == 'ls':
-        gan_loss_d, gan_loss_g = ls_loss_d, ls_loss_g
+        gan_loss_d, gan_loss_g = gan_losses.ls_loss_d, gan_losses.ls_loss_g
     else:
         raise NotImplementedError(f"Unsupported loss: {config.gan_loss}")
 
