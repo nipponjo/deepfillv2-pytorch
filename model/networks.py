@@ -622,16 +622,13 @@ class Conv2DSpectralNorm(nn.Conv2d):
     def forward(self, x):
 
         weight_orig = self.weight.flatten(1).detach()
-        #weight_orig = self.weight.flatten(1)
 
-        #with torch.no_grad():
         for _ in range(self.n_iter):
             v = self.l2_norm(weight_orig.t() @ self.weight_u)
             self.weight_u = self.l2_norm(weight_orig @ v)
 
         sigma = self.weight_u.t() @ weight_orig @ v
         self.weight.data.div_(sigma)
-        #self.weight.div_(sigma)
 
         x = super().forward(x)
 
