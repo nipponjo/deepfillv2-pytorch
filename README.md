@@ -36,6 +36,25 @@ python train.py --config configs/train.yaml
 
 Run `tensorboard --logdir <your_log_dir>` to see the [TensorBoard](https://pytorch.org/docs/stable/tensorboard.html) logging.
 
+  
+## Demo web app
+The web app uses are JS/React frontend and a FastAPI backend. To run it you need the following packages:
+  + fastapi, python-multipart: for the backend api
+  + uvicorn: for serving the app
+ 
+ Install with:
+  `pip install fastapi python-multipart "uvicorn[standard]"`
+ 
+Run with:
+ `python app.py`
+ 
+New models can be added in `app/models.yaml`
+  
+  <div align="center">
+    <img src="https://user-images.githubusercontent.com/28433296/179576283-bff8a7ef-b594-4a5e-8389-1bbd70fe6c1f.png" width="66%">  
+  </div>
+
+
 ## Requirements
   + python3
   + pytorch
