@@ -14,12 +14,15 @@ class DictConfig(object):
     """Creates a Config object from a dict 
        such that object attributes correspond to dict keys.    
     """
+
     def __init__(self, config_dict):
-        for key, val in config_dict.items():
-            self.__setattr__(key, val)
+        self.__dict__.update(config_dict)
 
     def __str__(self):
         return '\n'.join(f"{key}: {val}" for key, val in self.__dict__.items())
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def get_config(fname):

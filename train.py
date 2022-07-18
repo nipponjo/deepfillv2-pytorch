@@ -38,9 +38,9 @@ def training_loop(generator,        # generator network
     discriminator.train()
 
     # initialize dict for logging
-    losses_log = {'d_loss': [],
-                  'g_loss': [],
-                  'ae_loss': [],
+    losses_log = {'d_loss':   [],
+                  'g_loss':   [],
+                  'ae_loss':  [],
                   'ae_loss1': [],
                   'ae_loss2': [],
                   }
@@ -57,7 +57,7 @@ def training_loop(generator,        # generator network
             train_iter = iter(train_dataloader)
             batch_real = next(train_iter)
 
-        batch_real = batch_real.to(device)
+        batch_real = batch_real.to(device, non_blocking=True)
 
         # create mask
         bbox = misc.random_bbox(config)
@@ -159,8 +159,8 @@ def training_loop(generator,        # generator network
                 "Stage 2", img_grids[2], global_step=n_iter, dataformats="CHW")
 
         # save example image grids to disk
-        if config.save_imgs_to_dics_iter \
-            and n_iter % config.save_imgs_to_dics_iter == 0:
+        if config.save_imgs_to_disc_iter \
+            and n_iter % config.save_imgs_to_disc_iter == 0:
             viz_images = [misc.pt_to_image(batch_real), 
                           misc.pt_to_image(batch_complete)]
             img_grids = [tv.utils.make_grid(images[:config.viz_max_out], nrow=2)

@@ -33,8 +33,8 @@ class ImageDataset(Dataset):
         if scan_subdirs:
             self.data = self.make_dataset_from_subdirs(folder_path)
         else:
-            self.data = [entry.path for entry in os.scandir(
-                folder_path) if is_image_file(entry.name)]
+            self.data = [entry.path for entry in os.scandir(folder_path) 
+                                              if is_image_file(entry.name)]
 
         self.transforms = T.ToTensor()
         if transforms != None:

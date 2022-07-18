@@ -20,6 +20,11 @@ def _init_conv_layer(conv, activation, mode='fan_out'):
     if conv.bias != None:
         torch.nn.init.zeros_(conv.bias)
 
+def output_to_image(out):
+    out = (out[0].cpu().permute(1, 2, 0) + 1.) * 127.5
+    out = out.to(torch.uint8).numpy()
+    return out
+
 #----------------------------------------------------------------------------
 
 def same_padding(images, ksizes, strides, rates):
@@ -57,7 +62,6 @@ def downsampling_nn_tf(images, n=2):
     height_inds = torch.linspace(0, in_height-1, steps=out_height, device=images.device).add_(0.5).floor_().long()
     width_inds = torch.linspace(0, in_width-1, steps=out_width, device=images.device).add_(0.5).floor_().long()
     return images[:, :, height_inds][..., width_inds]
-
 
 #----------------------------------------------------------------------------
 
@@ -134,7 +138,7 @@ class GDeConv(nn.Module):
 #----------------------------------------------------------------------------
 
 class Generator(nn.Module):
-    def __init__(self, cnum_in, cnum, return_flow=False):
+    def __init__(self, cnum_in=5, cnum=48, return_flow=False, checkpoint=None):
         super().__init__()
 
         # stage 1
@@ -210,6 +214,11 @@ class Generator(nn.Module):
 
         self.return_flow = return_flow
 
+        if checkpoint is not None:
+            generator_state_dict = torch.load(checkpoint)['G']
+            self.load_state_dict(generator_state_dict, strict=True)
+        self.eval();
+
     def forward(self, x, mask):
         xin = x
 
@@ -284,6 +293,60 @@ class Generator(nn.Module):
             return x_stage1, x_stage2, offset_flow
             
         return x_stage1, x_stage2
+
+    @torch.inference_mode()
+    def infer(self,
+              image,
+              mask,
+              return_vals=['inpainted', 'stage1'], 
+              device='cuda'):
+        """
+        Args:
+            image: 
+            mask:
+            return_vals: inpainted, stage1, stage2, flow
+        Returns:
+
+        """
+
+        _, h, w = image.shape
+        grid = 8
+
+        image = image[:3, :h//grid*grid, :w//grid*grid].unsqueeze(0)
+        mask = mask[0:1, :h//grid*grid, :w//grid*grid].unsqueeze(0)
+
+        image = (image*2 - 1.)  # map image values to [-1, 1] range
+        # 1.: masked 0.: unmasked
+        mask = (mask > 0.).to(dtype=torch.float32)
+
+        image_masked = image * (1.-mask)  # mask image
+
+        ones_x = torch.ones_like(image_masked)[:, 0:1, :, :]  # sketch channel
+        x = torch.cat([image_masked, ones_x, ones_x*mask],
+                      dim=1)  # concatenate channels
+
+        if self.return_flow:
+            x_stage1, x_stage2, offset_flow = self.forward(x, mask)
+        else:
+            x_stage1, x_stage2 = self.forward(x, mask)
+
+        image_compl = image * (1.-mask) + x_stage2 * mask
+
+        output = []
+        for return_val in return_vals:
+            if return_val.lower() == 'stage1':
+                output.append(output_to_image(x_stage1))
+            elif return_val.lower() == 'stage2':
+                output.append(output_to_image(x_stage2))
+            elif return_val.lower() == 'inpainted':
+                output.append(output_to_image(image_compl))
+            elif return_val.lower() == 'flow' and self.return_flow:
+                output.append(offset_flow)
+            else:
+                print(f'Invalid return value: {return_val}')
+
+        return output
+
 
 #----------------------------------------------------------------------------
 

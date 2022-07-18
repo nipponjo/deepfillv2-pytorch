@@ -13,18 +13,18 @@ parser.add_argument("--out", type=str,
                     default="examples/inpaint/case1_out_test.png", help="path for the output file")
 parser.add_argument("--checkpoint", type=str,
                     default="pretrained/states_tf_places2.pth", help="path to the checkpoint file")
-parser.add_argument("--tfmodel", action='store_true',
-                    default=False, help="use model from models_tf.py?")
 
 
 def main():
 
     args = parser.parse_args()
 
-    if args.tfmodel:
-        from model.networks_tf import Generator
-    else:
+    generator_state_dict = torch.load(args.checkpoint)['G']
+
+    if 'stage1.conv1.conv.weight' in generator_state_dict.keys():
         from model.networks import Generator
+    else:
+        from model.networks_tf import Generator  
 
     use_cuda_if_available = True
     device = torch.device('cuda' if torch.cuda.is_available()
@@ -34,7 +34,7 @@ def main():
     generator = Generator(cnum_in=5, cnum=48, return_flow=False).to(device)
 
     generator_state_dict = torch.load(args.checkpoint)['G']
-    generator.load_state_dict(generator_state_dict)
+    generator.load_state_dict(generator_state_dict, strict=True)
 
     # load image and mask
     image = Image.open(args.image)
@@ -62,7 +62,7 @@ def main():
     x = torch.cat([image_masked, ones_x, ones_x*mask],
                   dim=1)  # concatenate channels
 
-    with torch.no_grad():
+    with torch.inference_mode():
         _, x_stage2 = generator(x, mask)
 
     # complete image
