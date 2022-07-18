@@ -1,0 +1,41 @@
+
+.drawing-container {
+  display: flex;
+  /* width: 100%; */
+  justify-content: center;
+  margin: 4.5rem auto 0 auto;
+}
+
+.drawing-field {
+  /* position: relative; */
+  height: 513px;
+  width: 513px;
+  border: 1px solid white;
+}
+
+.drawing-field img {
+  position: absolute;
+  border: 1px solid white;
+}
+
+.drawing-field canvas {
+  position: absolute;
+  border: 1px solid white;
+  z-index: 10;
+}
+
+.drawing-field button {
+    z-index: 100;
+}
+
+.wrapper {
+  position: relative;
+  margin: 0 auto;
+}
+
+.test {
+  
+  position: absolute;
+  top: 0; left: calc(50% + 300px);
+ 
+}

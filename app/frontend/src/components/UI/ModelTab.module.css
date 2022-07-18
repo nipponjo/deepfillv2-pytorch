@@ -1,0 +1,42 @@
+.tab {
+  display: flex;
+  align-items: center;
+  height: 2.5rem;
+  padding: 5px;
+  margin: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 2rem;
+  font-size: 0.9rem;
+  font-style: normal;
+  font-family: sans-serif;
+  color: white;
+}
+
+.loaded {
+  background-color: #1118;
+  box-shadow: 0 0 5px 3px rgba(255, 255, 255, 0.3);
+}
+
+.not-loaded {
+  background-color: #0008;
+  box-shadow: 0 0 5px 3px rgba(255, 255, 255, 0);
+}
+
+.tab button {
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 50%;
+  margin-left: 5px;
+  background: transparent;
+  color: #6bce19;
+  text-align: center;
+  border: 1px solid white;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.tab button:hover {
+  border: 1.5px solid red;
+  color: white;
+}

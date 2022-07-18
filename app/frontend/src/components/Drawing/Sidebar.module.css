@@ -1,0 +1,38 @@
+.sidebar {
+  height: 10rem;
+  width: 8rem;
+  border: 1px solid rgba(255, 255, 255, 0.322); 
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.sidebar label {
+  display: block;
+  margin-bottom: 0.3rem;
+  /* font-size: 1rem;  */
+}
+
+.sidebar input {
+  color: white;
+  width: 5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  background-color: black;
+  border: 1px solid white;
+
+}
+
+.sidebar button {
+  color: white;
+  background-color: black;
+  border: 0;
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.sidebar button:hover,
+.sidebar button:active {
+  color: white;
+  text-decoration: underline;
+  cursor: pointer;
+}

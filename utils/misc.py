@@ -40,10 +40,56 @@ def save_states(fname, gen, dis, g_optimizer, d_optimizer, n_iter, config):
     state_dicts = {'G': gen.state_dict(),
                    'D': dis.state_dict(),
                    'G_optim': g_optimizer.state_dict(),
-                   'D_optim': d_optimizer.state_dict(),           
+                   'D_optim': d_optimizer.state_dict(),
                    'n_iter': n_iter}
     torch.save(state_dicts, f"{config.checkpoint_dir}/{fname}")
     print("Saved state dicts!")
+
+
+def output_to_img(out):
+    out = (out[0].cpu().permute(1, 2, 0) + 1.) * 127.5
+    out = out.to(torch.uint8).numpy()
+    return out
+
+
+@torch.inference_mode()
+def infer_deepfill(generator,
+                   image,
+                   mask,
+                   return_vals=['inpainted', 'stage1']):
+
+    _, h, w = image.shape
+    grid = 8
+
+    image = image[:3, :h//grid*grid, :w//grid*grid].unsqueeze(0)
+    mask = mask[0:1, :h//grid*grid, :w//grid*grid].unsqueeze(0)
+
+    image = (image*2 - 1.)  # map image values to [-1, 1] range
+    # 1.: masked 0.: unmasked
+    mask = (mask > 0.).to(dtype=torch.float32)
+
+    image_masked = image * (1.-mask)  # mask image
+
+    ones_x = torch.ones_like(image_masked)[:, 0:1, :, :]  # sketch channel
+    x = torch.cat([image_masked, ones_x, ones_x*mask],
+                  dim=1)  # concatenate channels
+
+    x_stage1, x_stage2 = generator(x, mask)
+
+    image_compl = image * (1.-mask) + x_stage2 * mask
+
+    output = []
+    for return_val in return_vals:
+        if return_val.lower() == 'stage1':
+            output.append(output_to_img(x_stage1))
+        elif return_val.lower() == 'stage2':
+            output.append(output_to_img(x_stage2))
+        elif return_val.lower() == 'inpainted':
+            output.append(output_to_img(image_compl))
+        else:
+            print(f'Invalid return value: {return_val}')
+
+    return output
 
 
 def random_bbox(config):
@@ -90,7 +136,7 @@ def brush_stroke_mask(config):
 
     """
     min_num_vertex = 4
-    max_num_vertex = 12  
+    max_num_vertex = 12
     min_width = 12
     max_width = 40
 
@@ -153,7 +199,7 @@ def test_contextual_attention(imageA, imageB, contextual_attention):
     rate = 2
     stride = 1
     grid = rate*stride
-    
+
     b = Image.open(imageA)
     b = b.resize((b.width//2, b.height//2), resample=Image.BICUBIC)
     b = T.ToTensor()(b)
@@ -163,11 +209,11 @@ def test_contextual_attention(imageA, imageB, contextual_attention):
 
     print('Size of imageA: {}'.format(b.shape))
 
-    f = T.ToTensor()(Image.open(imageB)) 
+    f = T.ToTensor()(Image.open(imageB))
     _, h, w = f.shape
     f = f[:, :h//grid*grid, :w//grid*grid].unsqueeze(0)
- 
-    print('Size of imageB: {}'.format(f.shape))   
+
+    print('Size of imageB: {}'.format(f.shape))
 
     yt, flow = contextual_attention(f*255., b*255.)
 

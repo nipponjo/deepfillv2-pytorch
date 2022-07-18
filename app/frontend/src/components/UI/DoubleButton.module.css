@@ -1,0 +1,8 @@
+.button-left {
+  border-radius: 8px 0 0 8px !important;
+}
+
+.button-right {
+  border-radius: 0 8px 8px 0 !important;
+  border-left-color: transparent !important;
+}

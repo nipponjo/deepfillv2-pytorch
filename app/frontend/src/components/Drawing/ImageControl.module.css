@@ -1,0 +1,41 @@
+.image-control {
+  width: 512px;
+  margin: 0 auto;
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.image-control button {
+  border: 1.5px solid #e71616;
+  background-color: transparent;
+  font-size: 1rem;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  color: white;
+  border-radius: 8px;
+}
+
+.image-control button:hover,
+.image-control button:active {
+  color: rgb(0, 255, 115);
+  border: 2px solid rgb(255, 255, 255);
+  background-color: rgb(0, 0, 0);
+}
+
+.image-control .button-inpaint {
+  color: #e9e9e9;
+  border: 2px solid #a2df16;
+  background-color: transparent;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 0.45rem 1rem;
+}
+
+.image-upload-label {
+    cursor: pointer;
+  }
+
+#image-upload {
+    display: none;
+}

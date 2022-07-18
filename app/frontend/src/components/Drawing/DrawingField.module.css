@@ -1,0 +1,21 @@
+.drawing-field {
+  position: relative;
+  height: 512px;
+  width: 512px;
+  border: 1px solid white;
+}
+
+.drawing-field img {
+  position: absolute;
+  border: 1px solid white;
+}
+
+.drawing-field canvas {
+  position: absolute;
+  border: 1px solid white;
+  z-index: 10;
+}
+
+.drawing-field button {
+    z-index: 100;
+  }
