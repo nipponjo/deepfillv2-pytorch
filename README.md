@@ -38,7 +38,7 @@ Run `tensorboard --logdir <your_log_dir>` to see the [TensorBoard](https://pytor
 
   
 ## Demo web app
-The web app uses are JS/React frontend and a FastAPI backend. To run it you need the following packages:
+The web app uses a JS/React frontend and a FastAPI backend. To run it you need the following packages:
   + fastapi, python-multipart: for the backend api
   + uvicorn: for serving the app
  
