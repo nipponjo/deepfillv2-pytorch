@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.parametrizations import spectral_norm
+# from torch.nn.utils.parametrizations import spectral_norm
 
 # ----------------------------------------------------------------------------
 
@@ -38,22 +38,17 @@ class GConv(nn.Module):
        `Free-Form Image Inpainting with Gated Convolution`(Yu et al., 2019)
     """
 
-    def __init__(self, cnum_in,
-                 cnum_out,
-                 ksize,
-                 stride=1,
-                 padding='auto',
-                 rate=1,
+    def __init__(self, cnum_in, cnum_out,
+                 ksize, stride=1, padding='auto', rate=1,
                  activation=nn.ELU(),
-                 bias=True
-                 ):
-
+                 bias=True, gated=True):
         super().__init__()
 
         padding = rate*(ksize-1)//2 if padding == 'auto' else padding
         self.activation = activation
         self.cnum_out = cnum_out
-        num_conv_out = cnum_out if self.cnum_out == 3 or self.activation is None else 2*cnum_out
+        # num_conv_out = cnum_out if self.cnum_out == 3 or self.activation is None else 2*cnum_out
+        num_conv_out = 2*cnum_out if gated else cnum_out
         self.conv = nn.Conv2d(cnum_in,
                               num_conv_out,
                               kernel_size=ksize,
@@ -68,27 +63,32 @@ class GConv(nn.Module):
         self.stride = stride
         self.rate = rate
         self.padding = padding
+        self.gated = gated
 
     def forward(self, x):
-        x = self.conv(x)
-        if self.cnum_out == 3 or self.activation is None:
-            return x
+        """
+        Args:
+
+        """
+        if not self.gated: return self.conv(x)
+
+        x = self.conv(x)        
         x, y = torch.split(x, self.cnum_out, dim=1)
         x = self.activation(x)
         y = torch.sigmoid(y)
         x = x * y
+
         return x
 
 # ----------------------------------------------------------------------------
 
 class GDeConv(nn.Module):
-    """Upsampling followed by convolution"""
+    """Upsampling (x2) followed by convolution"""
 
-    def __init__(self, cnum_in,
-                 cnum_out,
-                 padding=1):
+    def __init__(self, cnum_in, cnum_out, padding=1):        
         super().__init__()
-        self.conv = GConv(cnum_in, cnum_out, 3, 1,
+
+        self.conv = GConv(cnum_in, cnum_out, ksize=3, stride=1,
                           padding=padding)
 
     def forward(self, x):
@@ -100,14 +100,14 @@ class GDeConv(nn.Module):
 # ----------------------------------------------------------------------------
 
 class GDownsamplingBlock(nn.Module):
-    def __init__(self, cnum_in,
-                 cnum_out,
-                 cnum_hidden=None
-                 ):
+    """Strided convolution (s=2) followed by convolution (s=1)"""
+
+    def __init__(self, cnum_in, cnum_out, cnum_hidden=None):
         super().__init__()
+
         cnum_hidden = cnum_out if cnum_hidden == None else cnum_hidden
-        self.conv1_downsample = GConv(cnum_in, cnum_hidden, 3, 2)
-        self.conv2 = GConv(cnum_hidden, cnum_out, 3, 1)
+        self.conv1_downsample = GConv(cnum_in, cnum_hidden, ksize=3, stride=2)
+        self.conv2 = GConv(cnum_hidden, cnum_out, ksize=3, stride=1)
 
     def forward(self, x):
         x = self.conv1_downsample(x)
@@ -117,14 +117,13 @@ class GDownsamplingBlock(nn.Module):
 # ----------------------------------------------------------------------------
 
 class GUpsamplingBlock(nn.Module):
-    def __init__(self, cnum_in,
-                 cnum_out,
-                 cnum_hidden=None
-                 ):
+    """Upsampling (x2) followed by two convolutions"""
+
+    def __init__(self, cnum_in, cnum_out, cnum_hidden=None):
         super().__init__()
         cnum_hidden = cnum_out if cnum_hidden == None else cnum_hidden
         self.conv1_upsample = GDeConv(cnum_in, cnum_hidden)
-        self.conv2 = GConv(cnum_hidden, cnum_out, 3, 1)
+        self.conv2 = GConv(cnum_hidden, cnum_out, ksize=3, stride=1)
 
     def forward(self, x):
         x = self.conv1_upsample(x)
@@ -135,29 +134,33 @@ class GUpsamplingBlock(nn.Module):
 
 
 class CoarseGenerator(nn.Module):
-    def __init__(self, cnum_in, cnum):
+    """Coarse Network (Stage I)"""
+
+    def __init__(self, cnum_in, cnum_out, cnum):
         super().__init__()
-        self.conv1 = GConv(cnum_in, cnum//2, 5, 1, padding=2)
+
+        self.conv1 = GConv(cnum_in, cnum//2, ksize=5, stride=1, padding=2)
 
         # downsampling
         self.down_block1 = GDownsamplingBlock(cnum//2, cnum)
         self.down_block2 = GDownsamplingBlock(cnum, 2*cnum)
 
         # bottleneck
-        self.conv_bn1 = GConv(2*cnum, 2*cnum, 3, 1)
-        self.conv_bn2 = GConv(2*cnum, 2*cnum, 3, rate=2, padding=2)
-        self.conv_bn3 = GConv(2*cnum, 2*cnum, 3, rate=4, padding=4)
-        self.conv_bn4 = GConv(2*cnum, 2*cnum, 3, rate=8, padding=8)
-        self.conv_bn5 = GConv(2*cnum, 2*cnum, 3, rate=16, padding=16)
-        self.conv_bn6 = GConv(2*cnum, 2*cnum, 3, 1)
-        self.conv_bn7 = GConv(2*cnum, 2*cnum, 3, 1)
+        self.conv_bn1 = GConv(2*cnum, 2*cnum, ksize=3, stride=1)
+        self.conv_bn2 = GConv(2*cnum, 2*cnum, ksize=3, rate=2, padding=2)
+        self.conv_bn3 = GConv(2*cnum, 2*cnum, ksize=3, rate=4, padding=4)
+        self.conv_bn4 = GConv(2*cnum, 2*cnum, ksize=3, rate=8, padding=8)
+        self.conv_bn5 = GConv(2*cnum, 2*cnum, ksize=3, rate=16, padding=16)
+        self.conv_bn6 = GConv(2*cnum, 2*cnum, ksize=3, stride=1)
+        self.conv_bn7 = GConv(2*cnum, 2*cnum, ksize=3, stride=1)
 
         # upsampling
         self.up_block1 = GUpsamplingBlock(2*cnum, cnum)
         self.up_block2 = GUpsamplingBlock(cnum, cnum//4, cnum_hidden=cnum//2)
 
         # to RGB
-        self.conv_to_rgb = GConv(cnum//4, 3, 3, 1, activation=None)
+        self.conv_to_rgb = GConv(cnum//4, cnum_out, ksize=3, stride=1, 
+                                 activation=None, gated=False)
         self.tanh = nn.Tanh()
 
     def forward(self, x):
@@ -188,11 +191,13 @@ class CoarseGenerator(nn.Module):
 # ----------------------------------------------------------------------------
 
 class FineGenerator(nn.Module):
-    def __init__(self, cnum, return_flow=False):
+    """Two Branch Refinement Network with Contextual Attention (Stage II)"""
+
+    def __init__(self, cnum_in, cnum_out, cnum, return_flow=False):
         super().__init__()
 
         ### CONV BRANCH (B1) ###
-        self.conv_conv1 = GConv(3, cnum//2, 5, 1, padding=2)
+        self.conv_conv1 = GConv(cnum_in, cnum//2, ksize=5, stride=1, padding=2)
 
         # downsampling
         self.conv_down_block1 = GDownsamplingBlock(
@@ -201,18 +206,17 @@ class FineGenerator(nn.Module):
             cnum, 2*cnum, cnum_hidden=cnum)
 
         # bottleneck
-        self.conv_conv_bn1 = GConv(2*cnum, 2*cnum, 3, 1)
-        self.conv_conv_bn2 = GConv(2*cnum, 2*cnum, 3, rate=2, padding=2)
-        self.conv_conv_bn3 = GConv(2*cnum, 2*cnum, 3, rate=4, padding=4)
-        self.conv_conv_bn4 = GConv(2*cnum, 2*cnum, 3, rate=8, padding=8)
-        self.conv_conv_bn5 = GConv(2*cnum, 2*cnum, 3, rate=16, padding=16)
+        self.conv_conv_bn1 = GConv(2*cnum, 2*cnum, ksize=3, stride=1)
+        self.conv_conv_bn2 = GConv(2*cnum, 2*cnum, ksize=3, rate=2, padding=2)
+        self.conv_conv_bn3 = GConv(2*cnum, 2*cnum, ksize=3, rate=4, padding=4)
+        self.conv_conv_bn4 = GConv(2*cnum, 2*cnum, ksize=3, rate=8, padding=8)
+        self.conv_conv_bn5 = GConv(2*cnum, 2*cnum, ksize=3, rate=16, padding=16)
 
         ### ATTENTION BRANCH (B2) ###
-        self.ca_conv1 = GConv(3, cnum//2, 5, 1, padding=2)
+        self.ca_conv1 = GConv(cnum_in, cnum//2, 5, 1, padding=2)
 
         # downsampling
-        self.ca_down_block1 = GDownsamplingBlock(
-            cnum//2, cnum, cnum_hidden=cnum//2)
+        self.ca_down_block1 = GDownsamplingBlock(cnum//2, cnum, cnum_hidden=cnum//2)
         self.ca_down_block2 = GDownsamplingBlock(cnum, 2*cnum)
 
         # bottleneck
@@ -226,19 +230,20 @@ class FineGenerator(nn.Module):
                                                         device_ids=None,
                                                         return_flow=return_flow,
                                                         n_down=2)
-        self.ca_conv_bn4 = GConv(2*cnum, 2*cnum, 3, 1)
-        self.ca_conv_bn5 = GConv(2*cnum, 2*cnum, 3, 1)
+        self.ca_conv_bn4 = GConv(2*cnum, 2*cnum, ksize=3, stride=1)
+        self.ca_conv_bn5 = GConv(2*cnum, 2*cnum, ksize=3, stride=1)
 
         ### UNITED BRANCHES ###
-        self.conv_bn6 = GConv(4*cnum, 2*cnum, 3, 1)
-        self.conv_bn7 = GConv(2*cnum, 2*cnum, 3, 1)
+        self.conv_bn6 = GConv(4*cnum, 2*cnum, ksize=3, stride=1)
+        self.conv_bn7 = GConv(2*cnum, 2*cnum, ksize=3, stride=1)
 
         # upsampling
         self.up_block1 = GUpsamplingBlock(2*cnum, cnum)
         self.up_block2 = GUpsamplingBlock(cnum, cnum//4, cnum_hidden=cnum//2)
 
         # to RGB
-        self.conv_to_rgb = GConv(cnum//4, 3, 3, 1, activation=None)
+        self.conv_to_rgb = GConv(cnum//4, cnum_out, ksize=3, stride=1, 
+                                 activation=None, gated=False)
         self.tanh = nn.Tanh()
 
     def forward(self, x, mask):
@@ -291,11 +296,19 @@ class FineGenerator(nn.Module):
 # ----------------------------------------------------------------------------
 
 class Generator(nn.Module):
-    def __init__(self, cnum_in=5, cnum=48, return_flow=False, checkpoint=None):
+    """Inpainting network consisting of a coarse and a refinement network. 
+    Described in the paper 
+    `Free-Form Image Inpainting with Gated Convolution, Yu et. al`.
+    """
+
+    def __init__(self, cnum_in=5, cnum_out=3, cnum=48, 
+                 return_flow=False, checkpoint=None):
         super().__init__()
-        self.stage1 = CoarseGenerator(cnum_in, cnum)
-        self.stage2 = FineGenerator(cnum, return_flow)
+
+        self.stage1 = CoarseGenerator(cnum_in, cnum_out, cnum)
+        self.stage2 = FineGenerator(cnum_out, cnum_out, cnum, return_flow)
         self.return_flow = return_flow
+        self.cnum_in = cnum_in
 
         if checkpoint is not None:
             generator_state_dict = torch.load(checkpoint)['G']
@@ -304,11 +317,16 @@ class Generator(nn.Module):
         self.eval()
 
     def forward(self, x, mask):
+        """
+        Args:
+            x (Tensor): input of shape [batch, cnum_in, H, W]
+            mask (Tensor): mask of shape [batch, 1, H, W]
+        """
         xin = x
         # get coarse result
         x_stage1 = self.stage1(x)
         # inpaint input with coarse result
-        x = x_stage1*mask + xin[:, 0:3, :, :]*(1.-mask)
+        x = x_stage1*mask + xin[:, :self.cnum_in-2]*(1.-mask)
         # get refined result
         x_stage2, offset_flow = self.stage2(x, mask)
 
@@ -318,25 +336,23 @@ class Generator(nn.Module):
         return x_stage1, x_stage2
 
     @torch.inference_mode()
-    def infer(self,
-              image,
-              mask,
-              return_vals=['inpainted', 'stage1'],
-              device='cuda'):
+    def infer(self, image, mask,
+              return_vals=['inpainted', 'stage1']):
         """
         Args:
-            image: 
-            mask:
-            return_vals: inpainted, stage1, stage2, flow
-        Returns:
-
+            image (Tensor): input image of shape [cnum_out, H, W]
+            mask (Tensor): mask of shape [*, H, W]
+            return_vals (str | List[str]): options: inpainted, stage1, stage2, flow
         """
+
+        if isinstance(return_vals, str):
+            return_vals = [return_vals]
 
         _, h, w = image.shape
         grid = 8
 
-        image = image[:3, :h//grid*grid, :w//grid*grid].unsqueeze(0)
-        mask = mask[0:1, :h//grid*grid, :w//grid*grid].unsqueeze(0)
+        image = image[None, :self.cnum_in, :h//grid*grid, :w//grid*grid]
+        mask = mask[None, :3, :h//grid*grid, :w//grid*grid].sum(1, keepdim=True)
 
         image = (image*2 - 1.)  # map image values to [-1, 1] range
         # 1.: masked 0.: unmasked
@@ -344,7 +360,7 @@ class Generator(nn.Module):
 
         image_masked = image * (1.-mask)  # mask image
 
-        ones_x = torch.ones_like(image_masked)[:, 0:1, :, :]  # sketch channel
+        ones_x = torch.ones_like(image_masked)[:, :1]  # sketch channel
         x = torch.cat([image_masked, ones_x, ones_x*mask],
                       dim=1)  # concatenate channels
 
@@ -368,6 +384,9 @@ class Generator(nn.Module):
             else:
                 print(f'Invalid return value: {return_val}')
 
+        if len(output) == 1:
+            return output[0]
+
         return output
 
 # ----------------------------------------------------------------------------
@@ -381,14 +400,14 @@ adapted from: https://github.com/daa233/generative-inpainting-pytorch/blob/maste
 """
 
 class ContextualAttention(nn.Module):
-    """ Contextual attention layer implementation. \\
-        Contextual attention is first introduced in publication: \\
-        `Generative Image Inpainting with Contextual Attention`, Yu et al \\
-        Args:
-            ksize: Kernel size for contextual attention
-            stride: Stride for extracting patches from b
-            rate: Dilation for matching
-            softmax_scale: Scaled softmax for attention
+    """ Contextual attention layer implementation. 
+        Contextual attention is first introduced in publication: 
+         `Generative Image Inpainting with Contextual Attention, Yu et al`
+    Args:
+        ksize: Kernel size for contextual attention
+        stride: Stride for extracting patches from b
+        rate: Dilation for matching
+        softmax_scale: Scaled softmax for attention
     """
 
     def __init__(self,
@@ -400,8 +419,9 @@ class ContextualAttention(nn.Module):
                  n_down=2,
                  fuse=False,
                  return_flow=False,
-                 device_ids=None):
-        super(ContextualAttention, self).__init__()
+                 device_ids=None):        
+        super().__init__()
+
         self.ksize = ksize
         self.stride = stride
         self.rate = rate
@@ -432,6 +452,7 @@ class ContextualAttention(nn.Module):
                                       stride=self.rate*self.stride,
                                       rate=1, padding='auto')  # [N, C*k*k, L]
         # raw_shape: [N, C, k, k, L]
+        L = raw_w.size(2)
         raw_w = raw_w.view(raw_int_bs[0], raw_int_bs[1], kernel, kernel, -1)
         raw_w = raw_w.permute(0, 4, 1, 2, 3)    # raw_shape: [N, L, C, k, k]
         raw_w_groups = torch.split(raw_w, 1, dim=0)
@@ -450,7 +471,7 @@ class ContextualAttention(nn.Module):
                                   stride=self.stride,
                                   rate=1, padding='auto')
         # w shape: [N, C, k, k, L]
-        w = w.view(int_bs[0], int_bs[1], self.ksize, self.ksize, -1)
+        w = w.view(int_bs[0], int_bs[1], self.ksize, self.ksize, L)
         w = w.permute(0, 4, 1, 2, 3)    # w shape: [N, L, C, k, k]
         w_groups = torch.split(w, 1, dim=0)
 
@@ -467,7 +488,7 @@ class ContextualAttention(nn.Module):
                                   stride=self.stride,
                                   rate=1, padding='auto')
         # m shape: [N, C, k, k, L]
-        m = m.view(int_ms[0], int_ms[1], self.ksize, self.ksize, -1)
+        m = m.view(int_ms[0], int_ms[1], self.ksize, self.ksize, L)
         m = m.permute(0, 4, 1, 2, 3)    # m shape: [N, L, C, k, k]
         m = m[0]    # m shape: [L, C, k, k]
         # mm shape: [L, 1, 1, 1]
@@ -494,8 +515,7 @@ class ContextualAttention(nn.Module):
                                 1, 2, 3], keepdim=True)).clamp_min(1e-4)
             wi_normed = wi / max_wi
             # xi shape: [1, C, H, W], yi shape: [1, L, H, W]
-            yi = F.conv2d(xi, wi_normed, stride=1, padding=(
-                self.ksize-1)//2)   # [1, L, H, W]
+            yi = F.conv2d(xi, wi_normed, stride=1, padding=(self.ksize-1)//2) # [1, L, H, W]
             # conv implementation for fuse scores to encourage large patches
             if self.fuse:
                 # make all of depth to spatial resolution
@@ -693,11 +713,13 @@ def extract_image_patches(images, ksize, stride, rate, padding='auto'):
 class Conv2DSpectralNorm(nn.Conv2d):
     """Convolution layer that applies Spectral Normalization before every call."""
 
-    def __init__(self, cnum_in,
-                 cnum_out, kernel_size, stride, padding=0, n_iter=1, eps=1e-12, bias=True):
+    def __init__(self, cnum_in, cnum_out, 
+                 kernel_size, stride, padding=0, bias=True,
+                 n_iter=1, eps=1e-12):
         super().__init__(cnum_in,
                          cnum_out, kernel_size=kernel_size,
                          stride=stride, padding=padding, bias=bias)
+        
         self.register_buffer("weight_u", torch.empty(self.weight.size(0), 1))
         nn.init.trunc_normal_(self.weight_u)
         self.n_iter = n_iter
@@ -724,9 +746,12 @@ class Conv2DSpectralNorm(nn.Conv2d):
 # ----------------------------------------------------------------------------
 
 class DConv(nn.Module):
-    def __init__(self, cnum_in,
-                 cnum_out, ksize=5, stride=2, padding='auto'):
+    """Spectral-Normalized convolution followed by a LeakyReLU activation"""
+
+    def __init__(self, cnum_in, cnum_out, 
+                 ksize=5, stride=2, padding='auto'):
         super().__init__()
+
         padding = (ksize-1)//2 if padding == 'auto' else padding
         self.conv_sn = Conv2DSpectralNorm(
             cnum_in, cnum_out, ksize, stride, padding)
@@ -741,8 +766,12 @@ class DConv(nn.Module):
 # ----------------------------------------------------------------------------
 
 class Discriminator(nn.Module):
+    """Fully Convolutional Spectral-Normalized Markovian Discriminator
+    from the paper `Free-Form Image Inpainting with Gated Convolution, Yu et. al`."""
+
     def __init__(self, cnum_in, cnum):
         super().__init__()
+        
         self.conv1 = DConv(cnum_in, cnum)
         self.conv2 = DConv(cnum, 2*cnum)
         self.conv3 = DConv(2*cnum, 4*cnum)

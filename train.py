@@ -67,7 +67,7 @@ def training_loop(generator,        # generator network
 
         # prepare input for generator
         batch_incomplete = batch_real*(1.-mask)
-        ones_x = torch.ones_like(batch_incomplete)[:, 0:1, :, :].to(device)
+        ones_x = torch.ones_like(batch_incomplete)[:, 0:1].to(device)
         x = torch.cat([batch_incomplete, ones_x, ones_x*mask], axis=1)
 
         # generate inpainted images
@@ -208,7 +208,7 @@ def main():
 
     # dataloading
     train_dataset = ImageDataset(config.dataset_path,
-                                 img_shape=config.img_shapes[:2],
+                                 img_shape=config.img_shapes,
                                  random_crop=config.random_crop,
                                  scan_subdirs=config.scan_subdirs,
                                  transforms=transforms)
@@ -224,8 +224,9 @@ def main():
                           and config.use_cuda_if_available else 'cpu')
     
     # construct networks
-    generator = Generator(cnum_in=5, cnum=48, return_flow=False)
-    discriminator = Discriminator(cnum_in=4, cnum=64)
+    cnum_in = config.img_shapes[2]
+    generator = Generator(cnum_in=cnum_in+2, cnum_out=cnum_in, cnum=48, return_flow=False)
+    discriminator = Discriminator(cnum_in=cnum_in+1, cnum=64)
 
     generator = generator.to(device)
     discriminator = discriminator.to(device)
@@ -249,7 +250,8 @@ def main():
     if config.model_restore != '':
         state_dicts = torch.load(config.model_restore)
         generator.load_state_dict(state_dicts['G'])
-        discriminator.load_state_dict(state_dicts['D'])
+        if 'D' in state_dicts.keys():
+            discriminator.load_state_dict(state_dicts['D'])
         if 'G_optim' in state_dicts.keys():
             g_optimizer.load_state_dict(state_dicts['G_optim'])
         if 'D_optim' in state_dicts.keys():
