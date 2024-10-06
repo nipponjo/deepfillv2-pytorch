@@ -6,26 +6,26 @@ import gdown
 
 
 FILES_DICT = {  
-    #   
+    # converted weights: Places2 (for networks_tf.py)
     "states_tf_places2.pth": {
         "path": "pretrained/states_tf_places2.pth",
         "url": "https://drive.google.com/file/d/1tvdQRmkphJK7FYveNAKSMWC6K09hJoyt/view?usp=drive_link",
         "download": True,
     },
-    #   
+    # converted weights: CelebA-HQ (for networks_tf.py)
     "states_tf_celebahq.pth": {
         "path": "pretrained/states_tf_celebahq.pth",
         "url": "https://drive.google.com/file/d/1fTQVSKWwWcKYnmeemxKWImhVtFQpESmm/view?usp=drive_link",
         "download": True,
     },
-    #   
+    # fine-tuned weights: Places2 (for networks.py)
     "states_pt_places2.pth": {
         "path": "pretrained/states_pt_places2.pth",
         "url": "https://drive.google.com/file/d/1L63oBNVgz7xSb_3hGbUdkYW1IuRgMkCa/view?usp=drive_link",
         "download": True,
     },
-    #   
-    "tstates_pt_celebahq.pth": {
+    # fine-tuned weights: CelebA-HQ (for networks.py)
+    "states_pt_celebahq.pth": {
         "path": "pretrained/states_pt_celebahq.pth",
         "url": "https://drive.google.com/file/d/17oJ1dJ9O3hkl2pnl8l2PtNVf2WhSDtB7/view?usp=drive_link",
         "download": True,
