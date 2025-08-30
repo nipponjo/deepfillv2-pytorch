@@ -103,7 +103,7 @@ def training_loop(generator,        # generator network
             torch.mean((torch.abs(batch_real - x2)))
         losses['ae_loss'] = losses['ae_loss1'] + losses['ae_loss2']
 
-        batch_gen = batch_predicted
+        batch_gen = batch_complete
         batch_gen = torch.cat((batch_gen, torch.tile(
             mask, [config.batch_size, 1, 1, 1])), dim=1)
 
