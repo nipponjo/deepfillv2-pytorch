@@ -1,6 +1,7 @@
 # %%
 import pathlib
 import gdown
+from packaging.version import Version
 
 # %%
 
@@ -47,4 +48,7 @@ for file_dict in FILES_DICT.values():
         print(file_dict['path'], "already exists!")
     elif file_dict.get('download', True):
         print("Downloading", file_dict['path'], "...")
-        output_filepath = gdown.download(file_dict['url'], output=file_path.as_posix(), fuzzy=True)
+        if Version(gdown.__version__) < Version("6"):
+            output_filepath = gdown.download(file_dict['url'], output=file_path.as_posix(), fuzzy=True)
+        else:
+            output_filepath = gdown.download(file_dict['url'], output=file_path.as_posix())
